@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: codeviz-backend
+    env: python
+    region: oregon
+    plan: free
+    rootDir: codeviz/backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: NEO4J_URI
+        sync: false
+      - key: NEO4J_USER
+        sync: false
+      - key: NEO4J_PASSWORD
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: TEMP_CLONE_DIR
+        value: /tmp/repos

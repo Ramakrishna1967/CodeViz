@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Node.js
+node_modules/
+npm-debug.log
+.next/
+out/
+build/
+dist/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Private
+.env
+.env.local
