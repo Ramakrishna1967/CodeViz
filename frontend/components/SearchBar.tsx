@@ -14,7 +14,7 @@ export default function SearchBar({ repoId, onResultClick }: SearchBarProps) {
     const [isSearching, setIsSearching] = useState(false)
     const [showResults, setShowResults] = useState(false)
     const searchRef = useRef<HTMLDivElement>(null)
-    const debounceTimer = useRef<NodeJS.Timeout>()
+    const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
