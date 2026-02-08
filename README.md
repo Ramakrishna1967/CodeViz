@@ -105,17 +105,14 @@ GEMINI_API_KEY=your_gemini_api_key
 - JavaScript
 - TypeScript
 
-## License
-
-MIT
 
 ---
 
-# Advanced Architecture Maps
+#  Architecture Maps
 
 This section contains **technical diagrams** for CodeViz AI, ranging from the high-level system view to low-level internal logic.
 
-## 1. The "Big Picture" (System Architecture)
+## System Architecture
 This shows how the pieces fit together.
 
 ```mermaid
@@ -152,7 +149,7 @@ graph TD
     API -->|9. Generates Answer| Gemini
 ```
 
-## 2. The "Analysis" Pipeline (High Level)
+## 2. The "Analysis" Pipeline 
 What happens when you click **"Analyze"**?
 
 ```mermaid
@@ -303,5 +300,3 @@ erDiagram
         string name
     }
 ```
-=======
->>>>>>> 8ef95f5457e03e5a4957d4d5cf3c609e2b2facc5
