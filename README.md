@@ -97,14 +97,7 @@ GEMINI_API_KEY=your_gemini_api_key
 | `/explain` | GET | Get AI explanation for a code element |
 | `/search` | GET | Search functions and classes |
 
-## Usage
 
-1. Open the app at `http://localhost:3000`
-2. Paste a GitHub repository URL
-3. Wait for analysis to complete
-4. Explore the interactive graph
-5. Click nodes to see code explanations
-6. Use the chat to ask questions
 
 ## Supported Languages
 
