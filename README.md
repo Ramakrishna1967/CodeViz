@@ -1,5 +1,5 @@
-# CodeViz AI
 
+<<<<<<< HEAD
 AI-powered codebase visualization and understanding platform.
 
 ## Features
@@ -309,3 +309,5 @@ erDiagram
         string name
     }
 ```
+=======
+>>>>>>> 8ef95f5457e03e5a4957d4d5cf3c609e2b2facc5
