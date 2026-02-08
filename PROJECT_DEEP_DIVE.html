@@ -1,0 +1,73 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeViz AI - Deep Dive</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max_width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            background-color: #f9fafb;
+        }
+        .container {
+            background: white;
+            padding: 4rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2, h3 { border-bottom: 1px solid #eaeaea; padding-bottom: 0.5rem; margin-top: 2rem; }
+        h1 { margin-top: 0; }
+        code { background-color: #f3f4f6; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.9em; font-family: 'Menlo', 'Monaco', 'Courier New', monospace; }
+        pre { background-color: #f3f4f6; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+        pre code { background-color: transparent; padding: 0; }
+        .mermaid { display: flex; justify-content: center; margin: 2rem 0; background: white; }
+        blockquote { border-left: 4px solid #3b82f6; margin: 1rem 0; padding: 0.5rem 1rem; color: #555; background-color: #eff6ff; border-radius: 4px; }
+        table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f3f4f6; }
+        img { max-width: 100%; }
+        .alert { padding: 1rem; border-radius: 4px; margin-bottom: 1rem; border: 1px solid transparent; }
+        .alert-info { color: #0c5460; background-color: #d1ecf1; border-color: #bee5eb; }
+        .alert-warning { color: #856404; background-color: #fff3cd; border-color: #ffeeba; }
+        .alert-important { color: #155724; background-color: #d4edda; border-color: #c3e6cb; }
+    </style>
+</head>
+<body>
+    <div class="container" id="content"></div>
+
+    <script>
+        const markdownContent = "# CodeViz AI - Comprehensive Project Analysis\n\n> [!IMPORTANT]\n> This document provides a full deep-dive into the CodeViz AI project, based on current code implementation. It explains how the system analyzes code, builds graphs, and powers AI chat.\n\n## 1. Project Overview & Architecture\n\n**CodeViz AI** is a full-stack application designed to visualize GitHub repositories as interactive graphs and enable AI-powered conversations about the codebase.\n\n### High-Level System Architecture\n\n```mermaid\ngraph TD\n    subgraph \"Frontend Layer (Client)\"\n        Browser[User Browser]\n        NextJS[Next.js App Router]\n        ReactFlow[React Flow Graph]\n    end\n\n    subgraph \"Backend Layer (Server)\"\n        FastAPI[FastAPI Server]\n        TreeSitter[Tree-sitter Parser]\n        GeminiClient[Gemini AI Client]\n    end\n\n    subgraph \"Data & Storage Layer\"\n        Neo4j[(Neo4j Graph Database)]\n        FileSystem[Temp File Storage]\n        GeminiAPI[Google Gemini API]\n    end\n\n    Browser <-->|HTTP/JSON| NextJS\n    NextJS <-->|REST API| FastAPI\n    \n    FastAPI -->|Clone & Read| FileSystem\n    FastAPI -->|Parse Code| TreeSitter\n    FastAPI <-->|Read / Write Nodes| Neo4j\n    FastAPI <-->|Generate Content| GeminiClient\n    GeminiClient <-->|Inference| GeminiAPI\n```\n\n---\n\n## 2. Core Workflows (How it Works)\n\n### Workflow A: The Analysis Pipeline (`/analyze`)\n\nThis is the most complex part of the system. It turns raw code into structured graph data.\n\n```mermaid\nsequenceDiagram\n    autonumber\n    actor User\n    participant API as FastAPI (Main)\n    participant FS as File System\n    participant Parser as Tree-sitter Logic\n    participant DB as Neo4j Client\n\n    User->>API: POST /analyze (github_url)\n    activate API\n    \n    Note over API, FS: Step 1: Clone\n    API->>FS: git clone repo to /temp/repo_id\n    API->>FS: os.walk() to collect .py, .js, .ts files\n    \n    Note over API, DB: Step 2: Initialize Graph\n    API->>DB: Create (Repo) Node\n    \n    Note over API, Parser: Step 3: Parse Loop\n    loop Every File in Repo\n        API->>Parser: Parse file content\n        Parser->>Parser: Extract Functions, Classes, Imports\n        Parser-->>API: Return Structured Data\n        \n        API->>DB: CREATE (File) Node\n        API->>DB: CREATE (Function) Nodes & Connect (File)-[:CONTAINS]->(Function)\n        API->>DB: CREATE (Class) Nodes & Connect (File)-[:CONTAINS]->(Class)\n        API->>DB: CREATE (Module) Nodes & Connect (File)-[:IMPORTS]->(Module)\n    end\n    \n    Note over API, FS: Step 4: Cleanup\n    API->>FS: Delete temp directory\n    \n    API-->>User: Return { repo_id, status: \"completed\" }\n    deactivate API\n```\n\n### Workflow B: The RAG Chat Pipeline (`/chat`)\n\nHow the AI answers questions using your codebase as context.\n\n```mermaid\nsequenceDiagram\n    autonumber\n    actor User\n    participant API as FastAPI\n    participant DB as Neo4j Database\n    participant LLM as Gemini Client\n\n    User->>API: POST /chat (question, repo_id)\n    activate API\n    \n    Note over API, DB: Step 1: Context Retrieval\n    API->>DB: MATCH (r:Repo)-[:HAS_FILE|CONTAINS]->(nodes)\n    DB-->>API: Return list of Files, Functions, Classes\n    \n    Note over API, LLM: Step 2: Prompt Construction\n    API->>API: Format Context (List of filenames/signatures)\n    API->>API: Create Prompt: \"Answer {question} using this context...\"\n    \n    Step 3: AI Inference\n    API->>LLM: generate_content(prompt)\n    LLM-->>API: Return Text Response\n    \n    API-->>User: Return Response + Citations\n    deactivate API\n```\n\n---\n\n## 3. Detailed Component Analysis\n\n### \ud83d\udda5\ufe0f Frontend (`frontend/`)\nBuilt with **Next.js 15** and **React 19**.\n-   **GraphViewer.tsx**: The core visualization component.\n    -   Uses `@xyflow/react` (React Flow) to render nodes.\n    -   **Layout Logic**: Implements a custom grid layout.\n        -   `Repo` node at the top.\n        -   `File` nodes in a grid row below.\n        -   `Class` and `Function` nodes below their respective files.\n    -   **Interaction**: Clicking a node triggers `onNodeClick`, likely to show code details.\n\n### \u2699\ufe0f Backend (`backend/`)\nBuilt with **FastAPI** and **Python 3.12**.\n\n#### 1. Parsing Engine (`parsers/treesitter.py`)\n-   **Capabilities**: Supports Python, JavaScript, TypeScript.\n-   **Extraction**:\n    -   **Functions**: Names, parameters, return types, line numbers.\n    -   **Classes**: Names, line ranges.\n    -   **Imports**: Module names.\n    -   **Calls**: Identifies function calls (but note: these are structurally extracted but not currently fully utilized in the graph connections).\n\n#### 2. Graph Database Layer (`graph/neo4j_client.py`)\n-   **Driver**: Uses `neo4j` async driver.\n-   **Schema Implementation**:\n    -   **Nodes**: `Repo`, `File`, `Function`, `Class`, `Module`.\n    -   **Relationships**:\n        -   `(:Repo)-[:HAS_FILE]->(:File)`\n        -   `(:File)-[:CONTAINS]->(:Function)`\n        -   `(:File)-[:CONTAINS]->(:Class)`\n        -   `(:File)-[:IMPORTS]->(:Module)`\n        -   *(Note: `CALLS` and `HAS_METHOD` relationships are defined in the client but not actively populated in the main parsing loop currently).*\n\n#### 3. AI Intelligence (`ai/gemini.py`)\n-   **Model**: Google Gemini 2.0 Flash (`gemini-2.0-flash`).\n-   **Context Strategy**:\n    -   Fetches a summary of the repo structure (list of files and top-level functions).\n    -   Does *not* currently dump the entire source code into the context window (optimized for token usage).\n    -   **Explain Feature**: Fetches the specific source code lines for a node and asks Gemini to explain just that snippet in context.\n\n---\n\n## 4. Logical Data Model\n\nThis diagram represents how the data is organized in the Neo4j database.\n\n```mermaid\nerDiagram\n    REPOSITORY ||--|{ FILE : contains\n    FILE ||--o{ CLASS : defines\n    FILE ||--o{ FUNCTION : defines\n    FILE ||--o{ MODULE : imports\n    \n    REPOSITORY {\n        string id PK\n        string name\n        string url\n    }\n    \n    FILE {\n        string path PK\n        string language\n        int size\n        string hash\n    }\n    \n    CLASS {\n        string name\n        int start_line\n        int end_line\n    }\n    \n    FUNCTION {\n        string name\n        string params\n        string return_type\n        int start_line\n        int end_line\n    }\n    \n    MODULE {\n        string name\n    }\n```\n\n## 5. Summary of Capabilities\n\n| Feature | Status | Description |\n| :--- | :--- | :--- |\n| **Repo Parsing** | \u2705 Active | Clones and parses Python/JS/TS files efficiently using Tree-sitter. |\n| **Visualization** | \u2705 Active | Visualizes file structure and code definitions in a hierarchical grid. |\n| **Code Search** | \u2705 Active | Finds nodes by name. |\n| **AI Chat** | \u2705 Active | Answers questions using project structure as context. |\n| **AI Explanation** | \u2705 Active | \"Explain this node\" extracts code and explains it. |\n| **Call Graph** | \u26a0\ufe0f Partial | Parser identifies calls, but the graph edges (`CALLS`) are not yet fully wired in the main analysis loop. |\n\n---\n\n## 6. Additional Diagrams for Clarity\n\n### A. Backend Component Diagram (Internal Structure)\nThis diagram shows how the Python modules in `backend/` interact with each other.\n\n```mermaid\nclassDiagram\n    class Main {\n        +app: FastAPI\n        +analyze_repository()\n        +get_graph()\n        +chat_with_codebase()\n    }\n    \n    class TreeSitterParser {\n        +parse_repository()\n        +collect_files()\n        +parse_file()\n    }\n    \n    class Neo4jClient {\n        +create_repo_node()\n        +create_file_node()\n        +create_function_node()\n        +execute_query()\n    }\n    \n    class GeminiClient {\n        +answer_question()\n        +explain_node()\n        +get_codebase_context()\n    }\n    \n    class Config {\n        +NEO4J_URI\n        +GEMINI_API_KEY\n    }\n\n    Main --> TreeSitterParser : uses\n    Main --> Neo4jClient : uses\n    Main --> GeminiClient : uses\n    TreeSitterParser --> Neo4jClient : writes data\n    GeminiClient --> Neo4jClient : reads context\n    Main --> Config : imports\n    Neo4jClient --> Config : imports\n```\n\n### B. Analysis State Machine\nThe lifecycle of a repository analysis request.\n\n```mermaid\nstateDiagram-v2\n    [*] --> Idle\n    Idle --> Cloning : POST /analyze\n    Cloning --> Parsing : Git Clone Success\n    Parsing --> Storing : File Parsed\n    Storing --> Parsing : Next File\n    Parsing --> Cleanup : All Files Done\n    Cleanup --> Complete : Remove Temp Dir\n    Complete --> [*]\n    \n    Cloning --> Error : Git Fail\n    Parsing --> Error : Exception\n    Error --> [*]\n```\n\n### C. Frontend Component Hierarchy\nHow the React components are structured in the Next.js application.\n\n```mermaid\ngraph TD\n    Page[Page (Home)] --> Layout[RootLayout]\n    Layout --> Main[Main Content Area]\n    \n    Main --> SplitView[Split View Container]\n    \n    SplitView --> GraphArea[Graph Area]\n    SplitView --> ChatArea[Chat Sidebar]\n    \n    GraphArea --> GraphViewer[GraphViewer.tsx]\n    GraphViewer --> ReactFlow[React Flow Instance]\n    GraphViewer --> MiniMap\n    GraphViewer --> Controls\n    \n    ChatArea --> ChatPanel[ChatPanel.tsx]\n    ChatPanel --> MessageList\n    ChatPanel --> InputArea\n    \n    GraphViewer -.->|On Node Click| CodePreview[Code Preview Modal]\n```\n\n\n";
+
+        // Configure marked
+        const renderer = new marked.Renderer();
+        
+        // Override code block rendering
+        renderer.code = function(code, language, escaped) {
+            if (language === 'mermaid') {
+                return '<div class="mermaid">' + code + '</div>';
+            }
+            return '<pre><code class="language-' + language + '">' + code + '</code></pre>';
+        };
+
+        // Parse markdown
+        document.getElementById('content').innerHTML = marked.parse(markdownContent, { renderer: renderer });
+
+        // Initialize mermaid
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'default',
+            securityLevel: 'loose',
+            flowchart: { htmlLabels: true }
+        });
+    </script>
+</body>
+</html>
+    

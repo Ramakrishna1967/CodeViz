@@ -1,140 +1,311 @@
-# CodeViz AI - The Complete Guide
+# CodeViz AI - Comprehensive Project Analysis
 
-## 1. High-Level Architecture
-**CodeViz AI** is a bridge between your codebase and your understanding. It turns lines of code into a navigable map and an intelligent conversation partner.
+> [!IMPORTANT]
+> This document provides a full deep-dive into the CodeViz AI project, based on current code implementation. It explains how the system analyzes code, builds graphs, and powers AI chat.
+
+## 1. Project Overview & Architecture
+
+**CodeViz AI** is a full-stack application designed to visualize GitHub repositories as interactive graphs and enable AI-powered conversations about the codebase.
+
+### High-Level System Architecture
 
 ```mermaid
 graph TD
-    User([User])
-    subgraph "Frontend (Next.js)"
-        UI[Web Interface]
-        GraphVis[Graph Visualizer]
-        ChatUI[Chat Panel]
-    end
-    
-    subgraph "Backend (FastAPI)"
-        API[API Gateway]
-        Parser[Tree-sitter Parser]
-        RAG[RAG Engine]
-    end
-    
-    subgraph "Information Storage"
-        DB[(Neo4j Graph DB)]
-        LLM[Gemini 2 Pro]
+    subgraph "Frontend Layer (Client)"
+        Browser[User Browser]
+        NextJS[Next.js App Router]
+        ReactFlow[React Flow Graph]
     end
 
-    User -->|1. Paste URL| UI
-    UI -->|2. Request Analysis| API
-    API -->|3. Clone & Scan| Parser
-    Parser -->|4. Store Nodes| DB
+    subgraph "Backend Layer (Server)"
+        FastAPI[FastAPI Server]
+        TreeSitter[Tree-sitter Parser]
+        GeminiClient[Gemini AI Client]
+    end
+
+    subgraph "Data & Storage Layer"
+        Neo4j[(Neo4j Graph Database)]
+        FileSystem[Temp File Storage]
+        GeminiAPI[Google Gemini API]
+    end
+
+    Browser <-->|HTTP/JSON| NextJS
+    NextJS <-->|REST API| FastAPI
     
-    User -->|5. Ask Question| ChatUI
-    ChatUI -->|6. Chat Request| API
-    API -->|7. Retrieve Context| DB
-    API -->|8. Generate Answer| LLM
+    FastAPI -->|Clone & Read| FileSystem
+    FastAPI -->|Parse Code| TreeSitter
+    FastAPI <-->|Read / Write Nodes| Neo4j
+    FastAPI <-->|Generate Content| GeminiClient
+    GeminiClient <-->|Inference| GeminiAPI
 ```
 
 ---
 
-## 2. Core Workflow: From Code to Graph (The "Analyze" Process)
-This is what happens when you click "Analyze". It's a pipeline that transforms raw text into a structured knowledge graph.
+## 2. Core Workflows (How it Works)
+
+### Workflow A: The Analysis Pipeline (`/analyze`)
+
+This is the most complex part of the system. It turns raw code into structured graph data.
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant BE as Backend (FastAPI)
+    autonumber
+    actor User
+    participant API as FastAPI (Main)
     participant FS as File System
-    participant TS as Tree-sitter (Parser)
-    participant DB as Neo4j
+    participant Parser as Tree-sitter Logic
+    participant DB as Neo4j Client
 
-    U->>BE: POST /analyze (github_url)
-    BE->>FS: git clone (to temp_repos/)
-    BE->>DB: Create (Repo) Node
+    User->>API: POST /analyze (github_url)
+    activate API
     
+    Note over API, FS: Step 1: Clone
+    API->>FS: git clone repo to /temp/repo_id
+    API->>FS: os.walk() to collect .py, .js, .ts files
+    
+    Note over API, DB: Step 2: Initialize Graph
+    API->>DB: Create (Repo) Node
+    
+    Note over API, Parser: Step 3: Parse Loop
     loop Every File in Repo
-        BE->>FS: Read File
-        BE->>TS: Parse Syntax Tree (AST)
-        TS-->>BE: Extract Functions, Classes, Calls
+        API->>Parser: Parse file content
+        Parser->>Parser: Extract Functions, Classes, Imports
+        Parser-->>API: Return Structured Data
         
-        BE->>DB: MERGE (File) Node
-        BE->>DB: MERGE (Function) Nodes
-        BE->>DB: MERGE Relationships (CALLS, IMPORTS)
+        API->>DB: CREATE (File) Node
+        API->>DB: CREATE (Function) Nodes & Connect (File)-[:CONTAINS]->(Function)
+        API->>DB: CREATE (Class) Nodes & Connect (File)-[:CONTAINS]->(Class)
+        API->>DB: CREATE (Module) Nodes & Connect (File)-[:IMPORTS]->(Module)
     end
     
-    BE->>FS: Delete temp files
-    BE-->>U: Analysis Complete {repo_id}
+    Note over API, FS: Step 4: Cleanup
+    API->>FS: Delete temp directory
+    
+    API-->>User: Return { repo_id, status: "completed" }
+    deactivate API
 ```
 
-**Explanation:**
-1.  **Clone**: The server temporarily downloads the code.
-2.  **Parse**: It uses `Tree-sitter`, a library that understands code syntax. It doesn't just read lines; it understands "This is a function named `process_data` taking arguments `x` and `y`".
-3.  **Graphing**: It pushes these entities to Neo4j. If `Function A` calls `Function B`, a physical link is created in the database.
+### Workflow B: The RAG Chat Pipeline (`/chat`)
 
----
-
-## 3. Core Workflow: RAG Chat (The "Ask" Process)
-How does the AI know about *your* specific code? It uses **Retrieval Augmented Generation (RAG)**.
+How the AI answers questions using your codebase as context.
 
 ```mermaid
-flowchart LR
-    Question[User Question] --> API
-    API -->|1. Search| DB[(Neo4j)]
-    DB -->|2. Return Context| Context[Relevant Files & Functions]
-    
-    Context --> Prompt
-    Question --> Prompt
-    
-    Prompt[Combined Prompt] --> LLM[Gemini 2 Pro]
-    LLM -->|3. Answer| Response
-    Response --> User
-```
+sequenceDiagram
+    autonumber
+    actor User
+    participant API as FastAPI
+    participant DB as Neo4j Database
+    participant LLM as Gemini Client
 
-**Why this matters:**
-Standard ChatGPT doesn't know your private code. CodeViz fixes this by looking up the *exact* functions and classes related to your question in the Graph Database and feeding them to Gemini before it answers.
+    User->>API: POST /chat (question, repo_id)
+    activate API
+    
+    Note over API, DB: Step 1: Context Retrieval
+    API->>DB: MATCH (r:Repo)-[:HAS_FILE|CONTAINS]->(nodes)
+    DB-->>API: Return list of Files, Functions, Classes
+    
+    Note over API, LLM: Step 2: Prompt Construction
+    API->>API: Format Context (List of filenames/signatures)
+    API->>API: Create Prompt: "Answer {question} using this context..."
+    
+    Step 3: AI Inference
+    API->>LLM: generate_content(prompt)
+    LLM-->>API: Return Text Response
+    
+    API-->>User: Return Response + Citations
+    deactivate API
+```
 
 ---
 
-## 4. The Data Model (Graph Schema)
-This is how your code is stored in the database.
+## 3. Detailed Component Analysis
+
+### 🖥️ Frontend (`frontend/`)
+Built with **Next.js 15** and **React 19**.
+-   **GraphViewer.tsx**: The core visualization component.
+    -   Uses `@xyflow/react` (React Flow) to render nodes.
+    -   **Layout Logic**: Implements a custom grid layout.
+        -   `Repo` node at the top.
+        -   `File` nodes in a grid row below.
+        -   `Class` and `Function` nodes below their respective files.
+    -   **Interaction**: Clicking a node triggers `onNodeClick`, likely to show code details.
+
+### ⚙️ Backend (`backend/`)
+Built with **FastAPI** and **Python 3.12**.
+
+#### 1. Parsing Engine (`parsers/treesitter.py`)
+-   **Capabilities**: Supports Python, JavaScript, TypeScript.
+-   **Extraction**:
+    -   **Functions**: Names, parameters, return types, line numbers.
+    -   **Classes**: Names, line ranges.
+    -   **Imports**: Module names.
+    -   **Calls**: Identifies function calls (but note: these are structurally extracted but not currently fully utilized in the graph connections).
+
+#### 2. Graph Database Layer (`graph/neo4j_client.py`)
+-   **Driver**: Uses `neo4j` async driver.
+-   **Schema Implementation**:
+    -   **Nodes**: `Repo`, `File`, `Function`, `Class`, `Module`.
+    -   **Relationships**:
+        -   `(:Repo)-[:HAS_FILE]->(:File)`
+        -   `(:File)-[:CONTAINS]->(:Function)`
+        -   `(:File)-[:CONTAINS]->(:Class)`
+        -   `(:File)-[:IMPORTS]->(:Module)`
+        -   *(Note: `CALLS` and `HAS_METHOD` relationships are defined in the client but not actively populated in the main parsing loop currently).*
+
+#### 3. AI Intelligence (`ai/gemini.py`)
+-   **Model**: Google Gemini 2.0 Flash (`gemini-2.0-flash`).
+-   **Context Strategy**:
+    -   Fetches a summary of the repo structure (list of files and top-level functions).
+    -   Does *not* currently dump the entire source code into the context window (optimized for token usage).
+    -   **Explain Feature**: Fetches the specific source code lines for a node and asks Gemini to explain just that snippet in context.
+
+---
+
+## 4. Logical Data Model
+
+This diagram represents how the data is organized in the Neo4j database.
+
+```mermaid
+erDiagram
+    REPOSITORY ||--|{ FILE : contains
+    FILE ||--o{ CLASS : defines
+    FILE ||--o{ FUNCTION : defines
+    FILE ||--o{ MODULE : imports
+    
+    REPOSITORY {
+        string id PK
+        string name
+        string url
+    }
+    
+    FILE {
+        string path PK
+        string language
+        int size
+        string hash
+    }
+    
+    CLASS {
+        string name
+        int start_line
+        int end_line
+    }
+    
+    FUNCTION {
+        string name
+        string params
+        string return_type
+        int start_line
+        int end_line
+    }
+    
+    MODULE {
+        string name
+    }
+```
+
+## 5. Summary of Capabilities
+
+| Feature | Status | Description |
+| :--- | :--- | :--- |
+| **Repo Parsing** | ✅ Active | Clones and parses Python/JS/TS files efficiently using Tree-sitter. |
+| **Visualization** | ✅ Active | Visualizes file structure and code definitions in a hierarchical grid. |
+| **Code Search** | ✅ Active | Finds nodes by name. |
+| **AI Chat** | ✅ Active | Answers questions using project structure as context. |
+| **AI Explanation** | ✅ Active | "Explain this node" extracts code and explains it. |
+| **Call Graph** | ⚠️ Partial | Parser identifies calls, but the graph edges (`CALLS`) are not yet fully wired in the main analysis loop. |
+
+---
+
+## 6. Additional Diagrams for Clarity
+
+### A. Backend Component Diagram (Internal Structure)
+This diagram shows how the Python modules in `backend/` interact with each other.
 
 ```mermaid
 classDiagram
-    class Repo {
-        url
-        name
-    }
-    class File {
-        path
-        language
-    }
-    class Class {
-        name
-        start_line
-    }
-    class Function {
-        name
-        params
-        return_type
+    class Main {
+        +app: FastAPI
+        +analyze_repository()
+        +get_graph()
+        +chat_with_codebase()
     }
     
-    Repo "1" --> "*" File : HAS_FILE
-    File "1" --> "*" Class : CONTAINS
-    File "1" --> "*" Function : CONTAINS
-    Class "1" --> "*" Function : HAS_METHOD
-    Function "*" --> "*" Function : CALLS
-    File "*" --> "*" File : IMPORTS
+    class TreeSitterParser {
+        +parse_repository()
+        +collect_files()
+        +parse_file()
+    }
+    
+    class Neo4jClient {
+        +create_repo_node()
+        +create_file_node()
+        +create_function_node()
+        +execute_query()
+    }
+    
+    class GeminiClient {
+        +answer_question()
+        +explain_node()
+        +get_codebase_context()
+    }
+    
+    class Config {
+        +NEO4J_URI
+        +GEMINI_API_KEY
+    }
+
+    Main --> TreeSitterParser : uses
+    Main --> Neo4jClient : uses
+    Main --> GeminiClient : uses
+    TreeSitterParser --> Neo4jClient : writes data
+    GeminiClient --> Neo4jClient : reads context
+    Main --> Config : imports
+    Neo4jClient --> Config : imports
 ```
 
----
+### B. Analysis State Machine
+The lifecycle of a repository analysis request.
 
-## 5. Technical Deep Dive (Key Components)
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Cloning : POST /analyze
+    Cloning --> Parsing : Git Clone Success
+    Parsing --> Storing : File Parsed
+    Storing --> Parsing : Next File
+    Parsing --> Cleanup : All Files Done
+    Cleanup --> Complete : Remove Temp Dir
+    Complete --> [*]
+    
+    Cloning --> Error : Git Fail
+    Parsing --> Error : Exception
+    Error --> [*]
+```
 
-### Backend (`/backend`)
-*   **`main.py`**: The traffic controller. It receives requests and delegates them.
-*   **`parsers/treesitter.py`**: The "Translator". It converts raw text (code) into data (functions/classes).
-*   **`graph/neo4j_client.py`**: The "Librarian". It knows how to organize this data into the shelf (database) so it can be found later.
+### C. Frontend Component Hierarchy
+How the React components are structured in the Next.js application.
 
-### Frontend (`/frontend`)
-*   **`GraphViewer.tsx`**: The "Map". uses React Flow to draw the nodes. It calculates layout so files look like a grid and functions sit inside them.
-*   **`ChatPanel.tsx`**: The "Interface". It handles the conversation state and streaming responses.
+```mermaid
+graph TD
+    Page[Page (Home)] --> Layout[RootLayout]
+    Layout --> Main[Main Content Area]
+    
+    Main --> SplitView[Split View Container]
+    
+    SplitView --> GraphArea[Graph Area]
+    SplitView --> ChatArea[Chat Sidebar]
+    
+    GraphArea --> GraphViewer[GraphViewer.tsx]
+    GraphViewer --> ReactFlow[React Flow Instance]
+    GraphViewer --> MiniMap
+    GraphViewer --> Controls
+    
+    ChatArea --> ChatPanel[ChatPanel.tsx]
+    ChatPanel --> MessageList
+    ChatPanel --> InputArea
+    
+    GraphViewer -.->|On Node Click| CodePreview[Code Preview Modal]
+```
+
 

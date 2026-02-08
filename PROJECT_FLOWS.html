@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeViz Project Flows</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 2rem;
+            text-align: center;
+            background: #f0f0f0;
+        }
+
+        .diagram-container {
+            background: white;
+            margin: 20px auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 1000px;
+        }
+
+        h1 {
+            margin-bottom: 2rem;
+            color: #333;
+        }
+
+        h2 {
+            color: #555;
+            margin-top: 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>CodeViz Project Flows</h1>
+
+    <!-- 1. SYSTEM OVERVIEW -->
+    <div class="diagram-container">
+        <h2>1. System Overview</h2>
+        <div class="mermaid">
+            graph TD
+            User((User))
+            Frontend[Frontend Website]
+            Backend[Backend Server]
+            Database[(Database)]
+            AI[AI Brain]
+
+            User -->|1. Opens Website| Frontend
+            Frontend -->|2. Sends Requests| Backend
+            Backend -->|3. Reads/Writes Data| Database
+            Backend -->|4. Asks Questions| AI
+            AI -->|5. Returns Answers| Backend
+            Backend -->|6. Sends Data Back| Frontend
+            Frontend -->|7. Shows Graph/Chat| User
+        </div>
+    </div>
+
+    <!-- 2. ANALYSIS PROCESS -->
+    <div class="diagram-container">
+        <h2>2. How Analysis Works</h2>
+        <div class="mermaid">
+            graph LR
+            Start((Start Analysis))
+            Clone[Download Code]
+            FindFiles[Find All Files]
+
+            subgraph "For Each File"
+            Parse[Read File Context]
+            FindFunc[Find Functions]
+            FindClass[Find Classes]
+            end
+
+            SaveDB[Save everything to Database]
+            Finish((Analysis Complete))
+
+            Start --> Clone
+            Clone --> FindFiles
+            FindFiles --> Parse
+            Parse --> FindFunc
+            Parse --> FindClass
+            FindFunc --> SaveDB
+            FindClass --> SaveDB
+            SaveDB --> Finish
+        </div>
+    </div>
+
+    <!-- 3. CHAT PROCESS -->
+    <div class="diagram-container">
+        <h2>3. How Chat Works</h2>
+        <div class="mermaid">
+            sequenceDiagram
+            actor User
+            participant System
+            participant Database
+            participant AI
+
+            User->>System: "What does this code do?"
+            System->>Database: Find relevant files & functions
+            Database-->>System: Return list of functions
+
+            System->>AI: Send User Question + Function List
+            AI-->>System: Explanation (in English)
+
+            System->>User: "This code handles login..."
+        </div>
+    </div>
+
+    <!-- 4. DATA STRUCTURE -->
+    <div class="diagram-container">
+        <h2>4. Data Structure</h2>
+        <div class="mermaid">
+            erDiagram
+            REPOSITORY ||--|{ FILE : "contains"
+            FILE ||--|{ FUNCTION : "defines"
+            FILE ||--|{ CLASS : "defines"
+            CLASS ||--|{ FUNCTION : "has method"
+
+            REPOSITORY {
+            string name
+            string url
+            }
+            FILE {
+            string filename
+            string language
+            }
+            FUNCTION {
+            string name
+            string inputs
+            }
+            CLASS {
+            string name
+            }
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'neutral' });
+    </script>
+
+</body>
+
+</html>
