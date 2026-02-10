@@ -1,4 +1,4 @@
-**CodeViz AI** is a tool designed to visualize and understand codebases by converting them into an interactive graph. It allows users to:
+**Code Viz AI** is a tool designed to visualize and understand codebases by converting them into an interactive graph. It allows users to:
 - **Visualize** the structure of a GitHub repository (files, classes, functions, dependencies).
 - **Chat** with the codebase using AI (Gemini 2 Pro) which has context from the graph.
 - **Search** and explore code elements.
