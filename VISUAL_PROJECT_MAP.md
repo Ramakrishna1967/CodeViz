@@ -1,9 +1,6 @@
 # 🗺️ CodeViz Visual Project Map
 
-> **HOW TO VIEW THIS FILE:**
-> 1. Look at the top right of your editor window.
-> 2. Click the icon that looks like an open book with a magnifying glass (or press `Ctrl+K V`).
-> 3. You will see these diagrams rendered as pictures.
+
 
 ---
 
